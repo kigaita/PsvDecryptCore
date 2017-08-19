@@ -1,6 +1,3 @@
-nuget:
-    account_feed:true
-    project_feed:true
 
 build_script:
     - dotnet publish -c Release -r win10-x64
