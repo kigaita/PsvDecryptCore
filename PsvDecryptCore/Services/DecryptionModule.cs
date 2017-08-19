@@ -11,22 +11,25 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PsvDecryptCore.Common;
 using PsvDecryptCore.Models;
-using PsvDecryptCore.Services;
 
-namespace PsvDecryptCore
+namespace PsvDecryptCore.Services
 {
-    public class DecryptUtility
+    public class DecryptionModule
     {
         private readonly LoggingService _loggingService;
         private readonly PsvInformation _psvInformation;
 
-        public DecryptUtility(PsvInformation psvInformation,
+        public DecryptionModule(PsvInformation psvInformation,
             LoggingService loggingService)
         {
             _psvInformation = psvInformation;
             _loggingService = loggingService;
         }
 
+        /// <summary>
+        ///     Begins decryption for all courses, modules, and clips.
+        /// </summary>
+        /// <returns></returns>
         public async Task BeginDecryptionAsync()
         {
             var sw = Stopwatch.StartNew();
@@ -46,11 +49,15 @@ namespace PsvDecryptCore
                             $"Courses directory for \"{course.Name}\" not found. Skipping...").ConfigureAwait(false);
                         continue;
                     }
+
                     if (!Directory.Exists(courseOutput)) Directory.CreateDirectory(courseOutput);
+
                     // Course image copy
                     taskQueue.Add(CopyCourseImageAsync(courseSource, courseOutput));
+
                     // Write course info as JSON
                     taskQueue.Add(WriteCourseInfoAsync(course, courseOutput));
+
                     // Process each module
                     taskQueue.AddRange(await ProcessCourseModulesAsync(course, courseSource, courseOutput)
                         .ConfigureAwait(false));
@@ -70,13 +77,19 @@ namespace PsvDecryptCore
             sw.Stop();
             await _loggingService.LogAsync(LogLevel.Information, $"Decryption finished after {sw.Elapsed}.")
                 .ConfigureAwait(false);
+
+            // Opens the output window if OS is Windows.
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 Process.Start("explorer.exe", _psvInformation.Output);
         }
 
+        /// <summary>
+        ///     Processes all <see cref="Module" /> under a <see cref="Course" />.
+        /// </summary>
         private async Task<List<Task>> ProcessCourseModulesAsync(Course course, string courseSource,
             string courseOutput)
         {
+            // Begins modules parsing.
             var taskQueue = new List<Task>();
             List<Module> modules;
             using (var psvContext = new PsvContext(_psvInformation))
@@ -87,21 +100,27 @@ namespace PsvDecryptCore
                 $"Found {modules.Count} modules under course {course.Name}...").ConfigureAwait(false);
             foreach (var module in modules)
             {
+                // Preps
                 await _loggingService.LogAsync(LogLevel.Information, $"Processing module: {module.Name}.")
                     .ConfigureAwait(false);
                 string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
                     .ConfigureAwait(false);
                 string moduleOutput = Path.Combine(courseOutput,
-                    $"{TitleToFileIndex(module.ModuleIndex)}. {TitleToFileName(module.Title)}");
+                    $"{StringUtil.TitleToFileIndex(module.ModuleIndex)}. {StringUtil.TitleToFileName(module.Title)}");
                 string moduleSource = Path.Combine(courseSource, moduleHash);
                 if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
+
+                // Writes module info.
                 taskQueue.Add(WriteModuleInfoAsync(module, moduleOutput));
 
+                // Begins clips processing.
                 List<Clip> clips;
                 using (var psvContext = new PsvContext(_psvInformation))
                 {
                     clips = psvContext.Clips.Where(x => x.ModuleId == module.Id).ToList();
                 }
+
+                // Bails if no clips are found in the database.
                 if (clips.Count == 0)
                 {
                     await _loggingService.LogAsync(LogLevel.Warning,
@@ -109,15 +128,23 @@ namespace PsvDecryptCore
                         .ConfigureAwait(false);
                     continue;
                 }
+
+                // Writes the clip info.
                 taskQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
+
                 taskQueue.Add(Task.Run(() =>
                 {
                     foreach (var clip in clips)
                     {
                         string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
-                        string clipName = $"{TitleToFileIndex(clip.ClipIndex)}. {TitleToFileName(clip.Title)}";
+                        string clipName =
+                            $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
                         string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
+
+                        // Begins decryption process for individual clips.
                         taskQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
+
+                        // Creates subtitles for each clip.
                         using (var psvContext = new PsvContext(_psvInformation))
                         {
                             var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
@@ -127,10 +154,12 @@ namespace PsvDecryptCore
                     }
                 }));
             }
-
             return taskQueue;
         }
 
+        /// <summary>
+        ///     Builds the <see cref="ClipTranscript" /> to SRT file.
+        /// </summary>
         private async Task BuildSubtitlesAsync(IList<ClipTranscript> transcripts, string srtOutput,
             string srtName)
         {
@@ -155,16 +184,22 @@ namespace PsvDecryptCore
             await _loggingService.LogAsync(LogLevel.Debug, $"Saved {srtName} subtitles...").ConfigureAwait(false);
         }
 
+        /// <summary>
+        ///     Gets the required module hash for course directory name.
+        /// </summary>
         private static Task<string> GetModuleHashAsync(string name, string authorHandle)
         {
-            string s = name + "|" + authorHandle;
             using (var md5 = MD5.Create())
             {
-                return Task.FromResult(Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(s)))
+                return Task.FromResult(Convert
+                    .ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(name + "|" + authorHandle)))
                     .Replace('/', '_'));
             }
         }
 
+        /// <summary>
+        ///     Decrypts the selected file.
+        /// </summary>
         private async Task DecryptFileAsync(string srcFile, string destFile)
         {
             if (string.IsNullOrWhiteSpace(srcFile) || !File.Exists(srcFile))
@@ -185,32 +220,9 @@ namespace PsvDecryptCore
             }
         }
 
-        private static string TitleToFileIndex(int index)
-            => index.ToString().PadLeft(2, '0');
-
-        private static string TitleToFileName(string title)
-        {
-            var sb = new StringBuilder();
-            foreach (char c in title)
-            {
-                switch (c)
-                {
-                    case ' ':
-                        sb.Append('-');
-                        break;
-                    case '-':
-                    case '_':
-                        sb.Append('-');
-                        break;
-                    default:
-                        if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9')
-                            sb.Append(c);
-                        break;
-                }
-            }
-            return sb.ToString();
-        }
-
+        /// <summary>
+        ///     Copies the course image if one exists.
+        /// </summary>
         private async Task CopyCourseImageAsync(string courseSource, string courseOutput)
         {
             string imageSrc = Path.Combine(courseSource, "image.jpg");

@@ -15,8 +15,10 @@ namespace PsvDecryptCore.Models
         public string ImageUrl { get; set; }
         public bool? IsStale { get; set; }
         public string Level { get; set; }
+
         [Key]
         public string Name { get; set; }
+
         public DateTime ReleaseDate { get; set; }
         public string ShortDescription { get; set; }
         public string Title { get; set; }

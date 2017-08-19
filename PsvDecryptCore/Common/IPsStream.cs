@@ -4,9 +4,8 @@ namespace PsvDecryptCore.Common
 {
     public interface IPsStream
     {
-        long Length { get; }
-
         int BlockSize { get; }
+        long Length { get; }
 
         void Seek(int offset, SeekOrigin begin);
 

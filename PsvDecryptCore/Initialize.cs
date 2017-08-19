@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using PsvDecryptCore.Common;
 using PsvDecryptCore.Models;
 using PsvDecryptCore.Services;
 
@@ -15,6 +14,11 @@ namespace PsvDecryptCore
         // Let's not attract unwanted attention on Google, shall we :p
         private const string EncodedSecret = "cGx1cmFsc2lnaHQ=";
 
+        /// <summary>
+        ///     Configures the required services and information for course infos.
+        /// </summary>
+        /// <exception cref="FileNotFoundException">Throws when Psv database cannot be found.</exception>
+        /// <exception cref="DirectoryNotFoundException">Throws when Psv courses cannot be found.</exception>
         public static Task<IServiceProvider> ConfigureServicesAsync()
         {
             string decodedSecret = Encoding.UTF8.GetString(Convert.FromBase64String(EncodedSecret));
@@ -48,7 +52,7 @@ namespace PsvDecryptCore
             var collection = new ServiceCollection()
                 .AddDbContext<PsvContext>()
                 .AddSingleton<LoggingService>()
-                .AddSingleton<DecryptUtility>()
+                .AddSingleton<DecryptionModule>()
                 .AddSingleton(fileInfo)
                 .AddLogging();
             var services = collection.BuildServiceProvider();

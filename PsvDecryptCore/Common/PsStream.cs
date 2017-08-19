@@ -23,10 +23,7 @@ namespace PsvDecryptCore.Common
             _fileStream.Seek(offset, begin);
         }
 
-        public int Read(byte[] pv, int i, int count)
-        {
-            return Length <= 0L ? 0 : _fileStream.Read(pv, i, count);
-        }
+        public int Read(byte[] pv, int i, int count) => Length <= 0L ? 0 : _fileStream.Read(pv, i, count);
 
         public void Dispose()
         {

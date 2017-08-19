@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PsvDecryptCore.Common;
+using PsvDecryptCore.Models;
 using PsvDecryptCore.Services;
 
 namespace PsvDecryptCore
@@ -13,16 +13,17 @@ namespace PsvDecryptCore
     {
         private LoggingService _logger;
         private PsvInformation _psvInfo;
-
         private IServiceProvider _services;
-        private DecryptUtility _utility;
+        private DecryptionModule _util;
 
-        // ReSharper disable once AsyncConverter.AsyncMethodNamingHighlighting
-        // ReSharper disable once UnusedMember.Local
         public static Task Main(string[] args) => new Program().StartAsync();
 
+        /// <summary>
+        ///     Main entry point.
+        /// </summary>
         public async Task StartAsync()
         {
+            // Preps the required services and information.
             try
             {
                 _services = await Initialize.ConfigureServicesAsync().ConfigureAwait(false);
@@ -35,8 +36,9 @@ namespace PsvDecryptCore
             }
             _logger = _services.GetRequiredService<LoggingService>();
             _psvInfo = _services.GetRequiredService<PsvInformation>();
-            _utility = _services.GetRequiredService<DecryptUtility>();
+            _util = _services.GetRequiredService<DecryptionModule>();
 
+            // Informs the user whereabouts of the courses and output.
             await _logger.LogAsync(LogLevel.Information, $"Psv Directory: {_psvInfo.DirectoryPath}")
                 .ConfigureAwait(false);
             await _logger.LogAsync(LogLevel.Information, $"Courses Directory: {_psvInfo.CoursesPath}")
@@ -51,9 +53,10 @@ namespace PsvDecryptCore
                                                          Environment.NewLine +
                                                          courseNameBuilder).ConfigureAwait(false);
 
+            // Ready to begin decryption.
             await _logger.LogAsync(LogLevel.Warning, "Press any key to start decryption...").ConfigureAwait(false);
             Console.ReadKey();
-            await _utility.BeginDecryptionAsync().ConfigureAwait(false);
+            await _util.BeginDecryptionAsync().ConfigureAwait(false);
             await _logger.LogAsync(LogLevel.Information, "Press any key to exit.").ConfigureAwait(false);
             Console.ReadKey();
         }
