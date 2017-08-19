@@ -1,7 +1,5 @@
 version: 1.0.{build}
 image: Visual Studio 2017 Preview
-skip_commits:
-  files: *.md
 before_build:
 - cmd: dotnet restore
 build:
