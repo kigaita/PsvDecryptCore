@@ -1,8 +1,10 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/df7j11fo65dd27py?svg=true)](https://ci.appveyor.com/project/Still/psvdecryptcore)
+
 # PsvDecryptCore
 Video file decryptor for a famous online developer training site. Originally developed by [KevinWang15](https://github.com/KevinWang15/).
 
 # Windows / Ubuntu Binaries
-Download the latest release [here]().
+You can find the latest release on the project's AppVeyor.
 
 # What's different?
 The original application was poorly designed with little to no multi-thread operation in mind. This version is re-written from scratch and improves the performance by up to 200%.
