@@ -6,7 +6,9 @@ Download the latest release [here]().
 
 # What's different?
 The original application was poorly designed with little to no multi-thread operation in mind. This version is re-written from scratch and improves the performance by up to 200%.
+
 # Speed difference
+
 Courses | Total Size | Speed (Core) | Speed (Original)
 ------------------------------------------------------
 5 courses | 3.83 GB | 00:00:26.0487531 | 00:01:18.2927028
