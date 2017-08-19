@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.8
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PsvDecryptCore", "PsvDecryptCore\PsvDecryptCore.csproj", "{B3DD8EAF-C2FE-4619-BC6E-31AC9B812858}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B3DD8EAF-C2FE-4619-BC6E-31AC9B812858}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3DD8EAF-C2FE-4619-BC6E-31AC9B812858}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3DD8EAF-C2FE-4619-BC6E-31AC9B812858}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3DD8EAF-C2FE-4619-BC6E-31AC9B812858}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {39029D5A-A7B4-4A08-B2A3-E27E1FDCB1B1}
+	EndGlobalSection
+	GlobalSection(CodealikeProperties) = postSolution
+		SolutionGuid = 8d400d49-142b-44c3-85fc-a40b2fe731e5
+	EndGlobalSection
+EndGlobal
