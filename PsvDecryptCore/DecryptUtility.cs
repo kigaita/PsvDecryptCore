@@ -39,7 +39,7 @@ namespace PsvDecryptCore
                         .ConfigureAwait(false);
                     // Checks
                     string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
-                    string courseOutput = Path.Combine(_psvInformation.Output, course.Name);
+                    string courseOutput = Path.Combine(_psvInformation.Output, course.Title);
                     if (!Directory.Exists(courseSource))
                     {
                         await _loggingService.LogAsync(LogLevel.Warning,
