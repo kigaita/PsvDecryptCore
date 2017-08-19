@@ -9,9 +9,9 @@ The original application was poorly designed with little to no multi-thread oper
 
 # Speed difference
 
-Courses | Total Size | Speed (Core) | Speed (Original)
-------------------------------------------------------
-5 courses | 3.83 GB | 00:00:26.0487531 | 00:01:18.2927028
+| Courses | Total Size | Speed (Core) | Speed (Original) |
+|---------|------------|--------------|------------------|
+|5 courses | 3.83 GB | 00:00:26.0487531 | 00:01:18.2927028|
 
 # Disclaimer
 Please, only use it for your convenience so that you can watch the course videos on your iPod, TV, etc.
