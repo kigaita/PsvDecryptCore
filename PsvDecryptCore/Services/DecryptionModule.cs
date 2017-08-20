@@ -208,7 +208,7 @@ namespace PsvDecryptCore.Services
             {
                 output.SetLength(0);
                 var buffer = stream.ReadAll();
-                output.Write(buffer, 0, buffer.Length);
+                await output.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                 await _loggingService.LogAsync(LogLevel.Information, $"Decrypted clip and saved to {destFile}.")
                     .ConfigureAwait(false);
             }
