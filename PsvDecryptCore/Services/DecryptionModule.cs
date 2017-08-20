@@ -18,6 +18,7 @@ namespace PsvDecryptCore.Services
     {
         private readonly LoggingService _loggingService;
         private readonly PsvInformation _psvInformation;
+        private readonly List<Task> _taskQueue = new List<Task>();
 
         public DecryptionModule(PsvInformation psvInformation,
             LoggingService loggingService)
@@ -33,7 +34,6 @@ namespace PsvDecryptCore.Services
         public async Task BeginDecryptionAsync()
         {
             var sw = Stopwatch.StartNew();
-            var taskQueue = new List<Task>();
             using (var psvContext = new PsvContext(_psvInformation))
             {
                 foreach (var course in psvContext.Courses)
@@ -53,17 +53,16 @@ namespace PsvDecryptCore.Services
                     if (!Directory.Exists(courseOutput)) Directory.CreateDirectory(courseOutput);
 
                     // Course image copy
-                    taskQueue.Add(CopyCourseImageAsync(courseSource, courseOutput));
+                    _taskQueue.Add(CopyCourseImageAsync(courseSource, courseOutput));
 
                     // Write course info as JSON
-                    taskQueue.Add(WriteCourseInfoAsync(course, courseOutput));
+                    _taskQueue.Add(WriteCourseInfoAsync(course, courseOutput));
 
                     // Process each module
-                    taskQueue.AddRange(await ProcessCourseModulesAsync(course, courseSource, courseOutput)
-                        .ConfigureAwait(false));
+                    await ProcessCourseModulesAsync(course, courseSource, courseOutput).ConfigureAwait(false);
                 }
             }
-            await Task.WhenAll(taskQueue).ConfigureAwait(false);
+            await Task.WhenAll(_taskQueue).ConfigureAwait(false);
             sw.Stop();
             await _loggingService.LogAsync(LogLevel.Information, $"Decryption finished after {sw.Elapsed}.")
                 .ConfigureAwait(false);
@@ -76,11 +75,10 @@ namespace PsvDecryptCore.Services
         /// <summary>
         ///     Processes all <see cref="Module" /> under a <see cref="Course" />.
         /// </summary>
-        private async Task<List<Task>> ProcessCourseModulesAsync(Course course, string courseSource,
+        private async Task ProcessCourseModulesAsync(Course course, string courseSource,
             string courseOutput)
         {
             // Begins modules parsing.
-            var taskQueue = new List<Task>();
             List<Module> modules;
             using (var psvContext = new PsvContext(_psvInformation))
             {
@@ -101,7 +99,7 @@ namespace PsvDecryptCore.Services
                 if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
 
                 // Writes module info.
-                taskQueue.Add(WriteModuleInfoAsync(module, moduleOutput));
+                _taskQueue.Add(WriteModuleInfoAsync(module, moduleOutput));
 
                 // Begins clips processing.
                 List<Clip> clips;
@@ -120,31 +118,27 @@ namespace PsvDecryptCore.Services
                 }
 
                 // Writes the clip info.
-                taskQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
+                _taskQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
 
-                taskQueue.Add(Task.Run(() =>
+                foreach (var clip in clips)
                 {
-                    foreach (var clip in clips)
+                    string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
+                    string clipName =
+                        $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
+                    string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
+
+                    // Begins decryption process for individual clips.
+                    _taskQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
+
+                    // Creates subtitles for each clip.
+                    using (var psvContext = new PsvContext(_psvInformation))
                     {
-                        string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
-                        string clipName =
-                            $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
-                        string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
-
-                        // Begins decryption process for individual clips.
-                        taskQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
-
-                        // Creates subtitles for each clip.
-                        using (var psvContext = new PsvContext(_psvInformation))
-                        {
-                            var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
-                                .ToList();
-                            taskQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
-                        }
+                        var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
+                            .ToList();
+                        _taskQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
                     }
-                }));
+                }
             }
-            return taskQueue;
         }
 
         /// <summary>
