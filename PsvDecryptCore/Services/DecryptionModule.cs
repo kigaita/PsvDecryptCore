@@ -130,24 +130,27 @@ namespace PsvDecryptCore.Services
                 // Writes the clip info.
                 _taskQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
 
-                foreach (var clip in clips)
+                _taskQueue.Add(Task.Run(() =>
                 {
-                    string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
-                    string clipName =
-                        $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
-                    string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
-
-                    // Begins decryption process for individual clips.
-                    _taskQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
-
-                    // Creates subtitles for each clip.
-                    using (var psvContext = new PsvContext(_psvInformation))
+                    foreach (var clip in clips)
                     {
-                        var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
-                            .ToList();
-                        _taskQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
+                        string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
+                        string clipName =
+                            $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
+                        string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
+
+                        // Begins decryption process for individual clips.
+                        _taskQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
+
+                        // Creates subtitles for each clip.
+                        using (var psvContext = new PsvContext(_psvInformation))
+                        {
+                            var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
+                                .ToList();
+                            _taskQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
+                        }
                     }
-                }
+                }));
             }
         }
 
