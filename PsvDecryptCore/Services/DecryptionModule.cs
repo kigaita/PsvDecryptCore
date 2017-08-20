@@ -62,7 +62,17 @@ namespace PsvDecryptCore.Services
                     await ProcessCourseModulesAsync(course, courseSource, courseOutput).ConfigureAwait(false);
                 }
             }
-            await Task.WhenAll(_taskQueue).ConfigureAwait(false);
+            try
+            {
+                await Task.WhenAll(_taskQueue).ConfigureAwait(false);
+            }
+            catch (AggregateException exs)
+            {
+                foreach (var exsInnerException in exs.InnerExceptions)
+                {
+                    await _loggingService.LogExceptionAsync(LogLevel.Warning, exsInnerException).ConfigureAwait(false);
+                }
+            }
             sw.Stop();
             await _loggingService.LogAsync(LogLevel.Information, $"Decryption finished after {sw.Elapsed}.")
                 .ConfigureAwait(false);
