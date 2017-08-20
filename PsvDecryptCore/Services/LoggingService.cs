@@ -14,6 +14,7 @@ namespace PsvDecryptCore.Services
 #else
             .AddConsole(LogLevel.Information)
 #endif
+            .AddFile($"log/{DateTime.Now:MM-dd-yy}.log")
             .CreateLogger("Main");
 
         public Task LogAsync(LogLevel logLevel, string message)
