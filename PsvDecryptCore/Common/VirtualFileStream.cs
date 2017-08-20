@@ -5,7 +5,9 @@ namespace PsvDecryptCore.Common
     internal class VirtualFileStream : IDisposable
     {
         private readonly VirtualFileCache _cache;
+#pragma warning disable 649
         private long _position;
+#pragma warning restore 649
 
         public VirtualFileStream(string encryptedVideoFilePath) =>
             _cache = new VirtualFileCache(encryptedVideoFilePath);

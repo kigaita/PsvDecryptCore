@@ -63,17 +63,7 @@ namespace PsvDecryptCore.Services
                         .ConfigureAwait(false));
                 }
             }
-            while (taskQueue.Any(x => !x.IsCompleted))
-                try
-                {
-                    // Limit number of tasks per queue to prevent bottleneck.
-                    Task.WaitAll(taskQueue.Where(x => !x.IsCompleted).Take(3).ToArray());
-                }
-                catch (AggregateException exs)
-                {
-                    foreach (var exception in exs.InnerExceptions)
-                        await _loggingService.LogExceptionAsync(LogLevel.Error, exception).ConfigureAwait(false);
-                }
+            await Task.WhenAll(taskQueue).ConfigureAwait(false);
             sw.Stop();
             await _loggingService.LogAsync(LogLevel.Information, $"Decryption finished after {sw.Elapsed}.")
                 .ConfigureAwait(false);
