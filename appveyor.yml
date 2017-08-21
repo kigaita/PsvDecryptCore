@@ -4,6 +4,9 @@ before_build:
 - cmd: dotnet restore
 build:
   verbosity: minimal
+branches:
+    only:
+        - master
 after_build:
 - ps: dotnet publish -c Release -r win10-x64 -o "../$env:APPVEYOR_PROJECT_NAME-win-x64"
 - ps: dotnet publish -c Release -r win10-x86 -o "../$env:APPVEYOR_PROJECT_NAME-win-x86"
