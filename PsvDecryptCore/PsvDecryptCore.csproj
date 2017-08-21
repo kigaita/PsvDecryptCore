@@ -8,7 +8,7 @@
     <Authors>Hsu Still</Authors>
     <Company>Hsu Still</Company>
     <PackageProjectUrl>https://github.com/Still34/PsvDecryptCore</PackageProjectUrl>
-    <RepositoryUrl></RepositoryUrl>
+    <RepositoryUrl>https://github.com/Still34/PsvDecryptCore</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
