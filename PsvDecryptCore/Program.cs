@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ namespace PsvDecryptCore
         private LoggingService _logger;
         private PsvInformation _psvInfo;
         private IServiceProvider _services;
-        private DecryptionModule _util;
+        private DecryptionEngine _util;
 
         public static Task Main(string[] args) => new Program().StartAsync();
 
@@ -36,7 +37,7 @@ namespace PsvDecryptCore
             }
             _logger = _services.GetRequiredService<LoggingService>();
             _psvInfo = _services.GetRequiredService<PsvInformation>();
-            _util = _services.GetRequiredService<DecryptionModule>();
+            _util = _services.GetRequiredService<DecryptionEngine>();
 
             // Informs the user whereabouts of the courses and output.
             await _logger.LogAsync(LogLevel.Information, $"Psv Directory: {_psvInfo.DirectoryPath}")
@@ -56,7 +57,10 @@ namespace PsvDecryptCore
             // Ready to begin decryption.
             await _logger.LogAsync(LogLevel.Warning, "Press any key to start decryption...").ConfigureAwait(false);
             Console.ReadKey();
-            await _util.BeginDecryptionAsync().ConfigureAwait(false);
+            var sw = Stopwatch.StartNew();
+            await _util.StartAsync().ConfigureAwait(false);
+            sw.Stop();
+            await _logger.LogAsync(LogLevel.Information, $"Finished after {sw.Elapsed}.").ConfigureAwait(false);
             await _logger.LogAsync(LogLevel.Information, "Press any key to exit.").ConfigureAwait(false);
             Console.ReadKey();
         }

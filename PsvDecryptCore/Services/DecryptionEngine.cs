@@ -29,93 +29,93 @@ namespace PsvDecryptCore.Services
         public async Task StartAsync(ParallelOptions options = null)
         {
             options = options ?? new ParallelOptions {MaxDegreeOfParallelism = Environment.ProcessorCount};
-            IEnumerable<Course> courses;
             using (var db = new PsvContext(_psvInformation))
             {
-                courses = db.Courses;
-            }
-            foreach (var course in courses)
-            {
-                await _loggingService.LogAsync(LogLevel.Information, $"Processing course \"{course.Name}\"...")
-                    .ConfigureAwait(false);
-                // Checks
-                string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
-                string courseOutput = Path.Combine(_psvInformation.Output, course.Title.Humanize(LetterCasing.Title));
-                if (!Directory.Exists(courseSource))
+                IEnumerable<Course> courses = db.Courses;
+                foreach (var course in courses)
                 {
-                    await _loggingService.LogAsync(LogLevel.Warning,
-                        $"Courses directory for \"{course.Name}\" not found. Skipping...").ConfigureAwait(false);
-                    continue;
-                }
-
-                if (!Directory.Exists(courseOutput)) Directory.CreateDirectory(courseOutput);
-
-                // Course image copy
-                await CopyCourseImageAsync(courseSource, courseOutput).ConfigureAwait(false);
-
-                // Write course info
-                await WriteCourseInfoAsync(course, courseOutput).ConfigureAwait(false);
-
-                List<Module> modules;
-                using (var psvContext = new PsvContext(_psvInformation))
-                {
-                    modules = await psvContext.Modules.Where(x => x.CourseName == course.Name).ToListAsync()
+                    await _loggingService.LogAsync(LogLevel.Information, $"Processing course \"{course.Name}\"...")
                         .ConfigureAwait(false);
-                }
-                await _loggingService.LogAsync(LogLevel.Information,
-                    $"Found {modules.Count} modules under course \"{course.Name}\"...").ConfigureAwait(false);
-                foreach (var module in modules)
-                {
-                    // Preps
-                    await _loggingService.LogAsync(LogLevel.Information, $"Processing module: {module.Name}...")
-                        .ConfigureAwait(false);
-                    string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
-                        .ConfigureAwait(false);
-                    string moduleOutput = Path.Combine(courseOutput,
-                        $"{StringUtil.TitleToFileIndex(module.ModuleIndex)}. {StringUtil.TitleToFileName(module.Title)}");
-                    string moduleSource = Path.Combine(courseSource, moduleHash);
-                    if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
-
-                    // Write module info
-                    await WriteModuleInfoAsync(module, moduleOutput).ConfigureAwait(false);
-
-                    // Process each clip
-                    List<Clip> clips;
-                    using (var psvContext = new PsvContext(_psvInformation))
-                    {
-                        clips = await psvContext.Clips.Where(x => x.ModuleId == module.Id).ToListAsync().ConfigureAwait(false);
-                    }
-
-                    // Bail if no courses are found in database
-                    if (clips.Count == 0)
+                    // Checks
+                    string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
+                    string courseOutput = Path.Combine(_psvInformation.Output,
+                        course.Title.Humanize(LetterCasing.Title));
+                    if (!Directory.Exists(courseSource))
                     {
                         await _loggingService.LogAsync(LogLevel.Warning,
-                                $"No corresponding clips found for module {module.Name}, skipping...")
-                            .ConfigureAwait(false);
+                            $"Courses directory for \"{course.Name}\" not found. Skipping...").ConfigureAwait(false);
                         continue;
                     }
 
-                    // Write clip info
-                    await WriteClipInfoAsync(clips, moduleOutput).ConfigureAwait(false);
+                    if (!Directory.Exists(courseOutput)) Directory.CreateDirectory(courseOutput);
 
-                    Parallel.ForEach(clips, options, async clip =>
+                    // Course image copy
+                    await CopyCourseImageAsync(courseSource, courseOutput).ConfigureAwait(false);
+
+                    // Write course info
+                    await WriteCourseInfoAsync(course, courseOutput).ConfigureAwait(false);
+
+                    List<Module> modules;
+                    using (var psvContext = new PsvContext(_psvInformation))
                     {
-                        string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
-                        string clipName =
-                            $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
-                        string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
+                        modules = await psvContext.Modules.Where(x => x.CourseName == course.Name).ToListAsync()
+                            .ConfigureAwait(false);
+                    }
+                    await _loggingService.LogAsync(LogLevel.Information,
+                        $"Found {modules.Count} modules under course \"{course.Name}\"...").ConfigureAwait(false);
+                    foreach (var module in modules)
+                    {
+                        // Preps
+                        await _loggingService.LogAsync(LogLevel.Information, $"Processing module: {module.Name}...")
+                            .ConfigureAwait(false);
+                        string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
+                            .ConfigureAwait(false);
+                        string moduleOutput = Path.Combine(courseOutput,
+                            $"{StringUtil.TitleToFileIndex(module.ModuleIndex)}. {StringUtil.TitleToFileName(module.Title)}");
+                        string moduleSource = Path.Combine(courseSource, moduleHash);
+                        if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
 
-                        // Decrypt individual clip
-                        await DecryptFileAsync(clipSource, clipFilePath).ConfigureAwait(false);
+                        // Write module info
+                        await WriteModuleInfoAsync(module, moduleOutput).ConfigureAwait(false);
 
-                        // Create subtitles for each clip
+                        // Process each clip
+                        List<Clip> clips;
                         using (var psvContext = new PsvContext(_psvInformation))
                         {
-                            var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
-                                .ToList();
-                            await BuildSubtitlesAsync(transcripts, moduleOutput, clipName).ConfigureAwait(false);
+                            clips = await psvContext.Clips.Where(x => x.ModuleId == module.Id).ToListAsync()
+                                .ConfigureAwait(false);
                         }
-                    });
+
+                        // Bail if no courses are found in database
+                        if (clips.Count == 0)
+                        {
+                            await _loggingService.LogAsync(LogLevel.Warning,
+                                    $"No corresponding clips found for module {module.Name}, skipping...")
+                                .ConfigureAwait(false);
+                            return;
+                        }
+
+                        // Write clip info
+                        await WriteClipInfoAsync(clips, moduleOutput).ConfigureAwait(false);
+
+                        Parallel.ForEach(clips, options, async clip =>
+                        {
+                            string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
+                            string clipName =
+                                $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
+                            string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
+
+                            // Decrypt individual clip
+                            await DecryptFileAsync(clipSource, clipFilePath).ConfigureAwait(false);
+
+                            // Create subtitles for each clip
+                            using (var psvContext = new PsvContext(_psvInformation))
+                            {
+                                var transcripts = await psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id).ToListAsync().ConfigureAwait(false);
+                                await BuildSubtitlesAsync(transcripts, moduleOutput, clipName).ConfigureAwait(false);
+                            }
+                        });
+                    }
                 }
             }
         }

@@ -52,7 +52,7 @@ namespace PsvDecryptCore
             var collection = new ServiceCollection()
                 .AddDbContext<PsvContext>()
                 .AddSingleton<LoggingService>()
-                .AddSingleton<DecryptionModule>()
+                .AddSingleton<DecryptionEngine>()
                 .AddSingleton(fileInfo)
                 .AddLogging();
             var services = collection.BuildServiceProvider();
