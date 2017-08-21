@@ -5,8 +5,8 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Description>A decryption tool for a famous online developer training website.</Description>
-    <Authors>Hsu Still, KevinWang15</Authors>
-    <Company />
+    <Authors>Hsu Still</Authors>
+    <Company>Hsu Still</Company>
     <PackageProjectUrl>https://github.com/Still34/PsvDecryptCore</PackageProjectUrl>
     <RepositoryUrl></RepositoryUrl>
   </PropertyGroup>
