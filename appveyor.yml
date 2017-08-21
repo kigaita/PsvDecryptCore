@@ -8,8 +8,8 @@ branches:
     only:
         - master
 after_build:
-- ps: dotnet publish -c Release -r win10-x64 -o "../$env:APPVEYOR_PROJECT_NAME-$env:APPVEYOR_BUILD_VERSION-win-x64"
-- ps: dotnet publish -c Release -r win10-x86 -o "../$env:APPVEYOR_PROJECT_NAME-$env:APPVEYOR_BUILD_VERSION-win-x86"
-- ps: dotnet publish -c Release -r ubuntu.16.10-x64 -o "../$env:APPVEYOR_PROJECT_NAME-$env:APPVEYOR_BUILD_VERSION-linux-x64"
+- ps: dotnet publish -c Release -r win10-x64 -o "../$env:APPVEYOR_PROJECT_NAME-win-x64"
+- ps: dotnet publish -c Release -r win10-x86 -o "../$env:APPVEYOR_PROJECT_NAME-win-x86"
+- ps: dotnet publish -c Release -r ubuntu.16.10-x64 -o "../$env:APPVEYOR_PROJECT_NAME-linux-x64"
 - ps: Get-ChildItem $env:APPVEYOR_PROJECT_NAME-* | % { 7z a -tzip $_.Name $_.FullName }
 - ps: Get-ChildItem *.zip | % { Push-AppveyorArtifact $_.FullName }
