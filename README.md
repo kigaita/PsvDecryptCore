@@ -1,5 +1,9 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/465nxgtsf4mtuay3?svg=true)](https://ci.appveyor.com/project/Still/psvdecryptcore)
 
+# THE PROGRAM IS STILL UNDER DEVELOPMENT.
+
+There are still several issues that need to be ironed out first. I'd recommend sticking to the original for now.
+
 # PsvDecryptCore
 Video file decryptor for a famous online developer training site. Originally developed by [KevinWang15](https://github.com/KevinWang15/).
 
