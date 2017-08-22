@@ -178,11 +178,11 @@ namespace PsvDecryptCore.Services
                 return;
             }
 
-            using (var stream = new VirtualFileStream(srcFile))
-            using (var output = new FileStream(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+            using (var input = new VirtualFileStream(srcFile))
+            using (var output = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None, 64000, FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
                 output.SetLength(0);
-                var buffer = stream.ReadAll();
+                var buffer = input.ReadAll();
                 await output.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                 _loggingService.Log(LogLevel.Information, $"Decrypted clip {Path.GetFileName(destFile)}.");
             }
@@ -202,7 +202,13 @@ namespace PsvDecryptCore.Services
             }
             if (!File.Exists(imageOutput))
             {
-                await Task.Run(() => File.Copy(imageSrc, imageOutput)).ConfigureAwait(false);
+                using (var sourceStream = new FileStream(imageSrc, FileMode.Open, FileAccess.Read,
+                    FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                using (var destinationStream = new FileStream(imageOutput, FileMode.CreateNew, FileAccess.Write,
+                    FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                {
+                    await sourceStream.CopyToAsync(destinationStream).ConfigureAwait(false);
+                }
                 _loggingService.Log(LogLevel.Debug, $"Copied course image to {imageOutput}.");
             }
         }
