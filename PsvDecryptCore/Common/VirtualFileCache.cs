@@ -7,13 +7,10 @@ namespace PsvDecryptCore.Common
 {
     public class VirtualFileCache : IDisposable
     {
-        private readonly IPsStream _encryptedVideoFile;
+        private readonly PsStream _encryptedVideoFile;
 
-        public VirtualFileCache(string encryptedVideoFilePath) => _encryptedVideoFile =
-            new PsStream(encryptedVideoFilePath);
-
-        public VirtualFileCache(IPsStream stream) => _encryptedVideoFile = stream;
-
+        public VirtualFileCache(string encryptedVideoFilePath) => _encryptedVideoFile = new PsStream(encryptedVideoFilePath);
+        
         public long Length => _encryptedVideoFile.Length;
 
         public void Dispose() => _encryptedVideoFile.Dispose();
@@ -23,11 +20,10 @@ namespace PsvDecryptCore.Common
             if (Length == 0L)
                 return;
             _encryptedVideoFile.Seek(offset, SeekOrigin.Begin);
-            int length = _encryptedVideoFile.Read(pv, 0, count);
+            int length = await _encryptedVideoFile.ReadAsync(pv, 0, count).ConfigureAwait(false);
             await VideoEncryption.XorBufferAsync(pv, length, offset).ConfigureAwait(false);
-            if (!(IntPtr.Zero != pcbRead))
-                return;
-            Marshal.WriteIntPtr(pcbRead, new IntPtr(length));
+            if (IntPtr.Zero != pcbRead)
+                Marshal.WriteIntPtr(pcbRead, new IntPtr(length));
         }
     }
 }

@@ -1,8 +1,9 @@
 ﻿using System.IO;
+using System.Threading.Tasks;
 
 namespace PsvDecryptCore.Common
 {
-    public class PsStream : IPsStream
+    public class PsStream
     {
         private readonly Stream _fileStream;
 
@@ -23,7 +24,9 @@ namespace PsvDecryptCore.Common
             _fileStream.Seek(offset, begin);
         }
 
-        public int Read(byte[] pv, int i, int count) => Length <= 0L ? 0 : _fileStream.Read(pv, i, count);
+        public Task<int> ReadAsync(byte[] pv, int i, int count) => Length <= 0L
+            ? Task.FromResult(0)
+            : _fileStream.ReadAsync(pv, i, count);
 
         public void Dispose()
         {

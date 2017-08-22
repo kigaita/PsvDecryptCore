@@ -27,7 +27,8 @@ namespace PsvDecryptCore.Services
 
         public async Task StartAsync(ParallelOptions options = null)
         {
-            options = options ?? new ParallelOptions {MaxDegreeOfParallelism = Environment.ProcessorCount};
+            options = options ?? new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+            var workerQueue = new List<Task>();
             using (var db = new PsvContext(_psvInformation))
             {
                 IEnumerable<Course> courses = db.Courses;
@@ -48,10 +49,10 @@ namespace PsvDecryptCore.Services
                     if (!Directory.Exists(courseOutput)) Directory.CreateDirectory(courseOutput);
 
                     // Course image copy
-                    await CopyCourseImageAsync(courseSource, courseOutput).ConfigureAwait(false);
+                    workerQueue.Add(CopyCourseImageAsync(courseSource, courseOutput));
 
                     // Write course info
-                    await WriteCourseInfoAsync(course, courseOutput).ConfigureAwait(false);
+                    workerQueue.Add(WriteCourseInfoAsync(course, courseOutput));
 
                     List<Module> modules;
                     using (var psvContext = new PsvContext(_psvInformation))
@@ -66,15 +67,14 @@ namespace PsvDecryptCore.Services
                         // Preps
                         await _loggingService.LogAsync(LogLevel.Information, $"Processing module: {module.Name}...")
                             .ConfigureAwait(false);
-                        string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
-                            .ConfigureAwait(false);
+                        string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle).ConfigureAwait(false);
                         string moduleOutput = Path.Combine(courseOutput,
                             $"{StringUtil.TitleToFileIndex(module.ModuleIndex)}. {StringUtil.TitleToFileName(module.Title)}");
                         string moduleSource = Path.Combine(courseSource, moduleHash);
                         if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
 
                         // Write module info
-                        await WriteModuleInfoAsync(module, moduleOutput).ConfigureAwait(false);
+                        workerQueue.Add(WriteModuleInfoAsync(module, moduleOutput));
 
                         // Process each clip
                         List<Clip> clips;
@@ -94,7 +94,7 @@ namespace PsvDecryptCore.Services
                         }
 
                         // Write clip info
-                        await WriteClipInfoAsync(clips, moduleOutput).ConfigureAwait(false);
+                        workerQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
 
                         Parallel.ForEach(clips, options, async clip =>
                         {
@@ -104,17 +104,29 @@ namespace PsvDecryptCore.Services
                             string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
 
                             // Decrypt individual clip
-                            await DecryptFileAsync(clipSource, clipFilePath).ConfigureAwait(false);
+                            workerQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
 
                             // Create subtitles for each clip
                             using (var psvContext = new PsvContext(_psvInformation))
                             {
                                 var transcripts = await psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
                                     .ToListAsync().ConfigureAwait(false);
-                                await BuildSubtitlesAsync(transcripts, moduleOutput, clipName).ConfigureAwait(false);
+                                workerQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
                             }
                         });
                     }
+                }
+            }
+            try
+            {
+                await Task.WhenAll(workerQueue).ConfigureAwait(false);
+            }
+            catch (AggregateException exs)
+            {
+                await _loggingService.LogAsync(LogLevel.Warning, $"Decryption ended with {exs.InnerExceptions.Count} errors.").ConfigureAwait(false);
+                foreach (var exsInnerException in exs.InnerExceptions)
+                {
+                    await _loggingService.LogExceptionAsync(LogLevel.Warning, exsInnerException).ConfigureAwait(false);
                 }
             }
         }
