@@ -58,7 +58,14 @@ namespace PsvDecryptCore
             await _logger.LogAsync(LogLevel.Warning, "Press any key to start decryption...").ConfigureAwait(false);
             Console.ReadKey();
             var sw = Stopwatch.StartNew();
-            await _util.StartAsync().ConfigureAwait(false);
+            try
+            {
+                await _util.StartAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await _logger.LogExceptionAsync(LogLevel.Error, ex).ConfigureAwait(false);
+            }
             sw.Stop();
             await _logger.LogAsync(LogLevel.Information, $"Finished after {sw.Elapsed}.").ConfigureAwait(false);
             await _logger.LogAsync(LogLevel.Information, "Press any key to exit.").ConfigureAwait(false);

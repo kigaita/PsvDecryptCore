@@ -5,7 +5,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Humanizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -38,8 +37,7 @@ namespace PsvDecryptCore.Services
                         .ConfigureAwait(false);
                     // Checks
                     string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
-                    string courseOutput = Path.Combine(_psvInformation.Output,
-                        course.Title.Humanize(LetterCasing.Title));
+                    string courseOutput = Path.Combine(_psvInformation.Output, StringUtil.SanitizeTitle(course.Title));
                     if (!Directory.Exists(courseSource))
                     {
                         await _loggingService.LogAsync(LogLevel.Warning,
@@ -111,7 +109,8 @@ namespace PsvDecryptCore.Services
                             // Create subtitles for each clip
                             using (var psvContext = new PsvContext(_psvInformation))
                             {
-                                var transcripts = await psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id).ToListAsync().ConfigureAwait(false);
+                                var transcripts = await psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
+                                    .ToListAsync().ConfigureAwait(false);
                                 await BuildSubtitlesAsync(transcripts, moduleOutput, clipName).ConfigureAwait(false);
                             }
                         });

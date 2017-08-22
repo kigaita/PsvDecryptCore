@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace PsvDecryptCore.Common
 {
@@ -38,6 +40,15 @@ namespace PsvDecryptCore.Common
                 }
             }
             return sb.ToString();
+        }
+
+        public static string SanitizeTitle(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return null;
+            var invalidPathChars = Path.GetInvalidPathChars();
+            var invalidFileNameChars = Path.GetInvalidFileNameChars();
+            return new string(title.Where(x => !invalidFileNameChars.Contains(x) &&
+                                               !invalidPathChars.Contains(x)).ToArray());
         }
     }
 }
