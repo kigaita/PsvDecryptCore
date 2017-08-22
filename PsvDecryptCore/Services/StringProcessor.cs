@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace PsvDecryptCore.Common
+namespace PsvDecryptCore.Services
 {
     public class StringProcessor
     {
