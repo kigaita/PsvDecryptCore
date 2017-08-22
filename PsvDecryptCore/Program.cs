@@ -40,22 +40,20 @@ namespace PsvDecryptCore
             _util = _services.GetRequiredService<DecryptionEngine>();
 
             // Informs the user whereabouts of the courses and output.
-            await _logger.LogAsync(LogLevel.Information, $"Psv Directory: {_psvInfo.DirectoryPath}")
-                .ConfigureAwait(false);
-            await _logger.LogAsync(LogLevel.Information, $"Courses Directory: {_psvInfo.CoursesPath}")
-                .ConfigureAwait(false);
-            await _logger.LogAsync(LogLevel.Information, $"Output: {_psvInfo.Output}").ConfigureAwait(false);
+            _logger.Log(LogLevel.Information, $"Psv Directory: {_psvInfo.DirectoryPath}");
+            _logger.Log(LogLevel.Information, $"Courses Directory: {_psvInfo.CoursesPath}");
+            _logger.Log(LogLevel.Information, $"Output: {_psvInfo.Output}");
 
             var courseNameBuilder = new StringBuilder();
             foreach (string directory in _psvInfo.CoursesSubDirectories)
                 courseNameBuilder.AppendLine(Path.GetFileName(directory));
 
-            await _logger.LogAsync(LogLevel.Information, $"Found {_psvInfo.CoursesSubDirectories.Length} courses..." +
-                                                         Environment.NewLine +
-                                                         courseNameBuilder).ConfigureAwait(false);
+            _logger.Log(LogLevel.Information, $"Found {_psvInfo.CoursesSubDirectories.Length} courses..." +
+                                                    Environment.NewLine +
+                                                    courseNameBuilder);
 
             // Ready to begin decryption.
-            await _logger.LogAsync(LogLevel.Warning, "Press any key to start decryption...").ConfigureAwait(false);
+            _logger.Log(LogLevel.Warning, "Press any key to start decryption...");
             Console.ReadKey();
             var sw = Stopwatch.StartNew();
             try
@@ -64,11 +62,11 @@ namespace PsvDecryptCore
             }
             catch (Exception ex)
             {
-                await _logger.LogExceptionAsync(LogLevel.Error, ex).ConfigureAwait(false);
+                _logger.LogException(LogLevel.Error, ex);
             }
             sw.Stop();
-            await _logger.LogAsync(LogLevel.Information, $"Finished after {sw.Elapsed}.").ConfigureAwait(false);
-            await _logger.LogAsync(LogLevel.Information, "Press any key to exit.").ConfigureAwait(false);
+            _logger.Log(LogLevel.Information, $"Finished after {sw.Elapsed}.");
+            _logger.Log(LogLevel.Information, "Press any key to exit.");
             Console.ReadKey();
         }
     }

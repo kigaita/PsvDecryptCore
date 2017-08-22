@@ -27,22 +27,21 @@ namespace PsvDecryptCore.Services
 
         public async Task StartAsync(ParallelOptions options = null)
         {
-            options = options ?? new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+            options = options ?? new ParallelOptions {MaxDegreeOfParallelism = Environment.ProcessorCount};
             var workerQueue = new List<Task>();
             using (var db = new PsvContext(_psvInformation))
             {
                 IEnumerable<Course> courses = db.Courses;
                 foreach (var course in courses)
                 {
-                    await _loggingService.LogAsync(LogLevel.Information, $"Processing course \"{course.Name}\"...")
-                        .ConfigureAwait(false);
+                    _loggingService.Log(LogLevel.Information, $"Processing course \"{course.Name}\"...");
                     // Checks
                     string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
                     string courseOutput = Path.Combine(_psvInformation.Output, StringUtil.SanitizeTitle(course.Title));
                     if (!Directory.Exists(courseSource))
                     {
-                        await _loggingService.LogAsync(LogLevel.Warning,
-                            $"Courses directory for \"{course.Name}\" not found. Skipping...").ConfigureAwait(false);
+                        _loggingService.Log(LogLevel.Warning,
+                            $"Courses directory for \"{course.Name}\" not found. Skipping...");
                         continue;
                     }
 
@@ -60,14 +59,14 @@ namespace PsvDecryptCore.Services
                         modules = await psvContext.Modules.Where(x => x.CourseName == course.Name).ToListAsync()
                             .ConfigureAwait(false);
                     }
-                    await _loggingService.LogAsync(LogLevel.Information,
-                        $"Found {modules.Count} modules under course \"{course.Name}\"...").ConfigureAwait(false);
+                    _loggingService.Log(LogLevel.Information,
+                        $"Found {modules.Count} modules under course \"{course.Name}\"...");
                     foreach (var module in modules)
                     {
                         // Preps
-                        await _loggingService.LogAsync(LogLevel.Information, $"Processing module: {module.Name}...")
+                        _loggingService.Log(LogLevel.Information, $"Processing module: {module.Name}...");
+                        string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
                             .ConfigureAwait(false);
-                        string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle).ConfigureAwait(false);
                         string moduleOutput = Path.Combine(courseOutput,
                             $"{StringUtil.TitleToFileIndex(module.ModuleIndex)}. {StringUtil.TitleToFileName(module.Title)}");
                         string moduleSource = Path.Combine(courseSource, moduleHash);
@@ -87,9 +86,8 @@ namespace PsvDecryptCore.Services
                         // Bail if no courses are found in database
                         if (clips.Count == 0)
                         {
-                            await _loggingService.LogAsync(LogLevel.Warning,
-                                    $"No corresponding clips found for module {module.Name}, skipping...")
-                                .ConfigureAwait(false);
+                            _loggingService.Log(LogLevel.Warning,
+                                $"No corresponding clips found for module {module.Name}, skipping...");
                             return;
                         }
 
@@ -123,11 +121,9 @@ namespace PsvDecryptCore.Services
             }
             catch (AggregateException exs)
             {
-                await _loggingService.LogAsync(LogLevel.Warning, $"Decryption ended with {exs.InnerExceptions.Count} errors.").ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Warning, $"Decryption ended with {exs.InnerExceptions.Count} errors.");
                 foreach (var exsInnerException in exs.InnerExceptions)
-                {
-                    await _loggingService.LogExceptionAsync(LogLevel.Warning, exsInnerException).ConfigureAwait(false);
-                }
+                    _loggingService.LogException(LogLevel.Warning, exsInnerException);
             }
         }
 
@@ -155,7 +151,7 @@ namespace PsvDecryptCore.Services
                 transcriptBuilder.AppendLine();
             }
             await File.WriteAllTextAsync(transcriptFileOutput, transcriptBuilder.ToString()).ConfigureAwait(false);
-            await _loggingService.LogAsync(LogLevel.Debug, $"Saved {srtName} subtitles...").ConfigureAwait(false);
+            _loggingService.Log(LogLevel.Debug, $"Saved {srtName} subtitles...");
         }
 
         /// <summary>
@@ -178,8 +174,7 @@ namespace PsvDecryptCore.Services
         {
             if (string.IsNullOrWhiteSpace(srcFile) || !File.Exists(srcFile))
             {
-                await _loggingService.LogAsync(LogLevel.Warning, $"Invalid source file {srcFile}, skipping...")
-                    .ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Warning, $"Invalid source file {srcFile}, skipping...");
                 return;
             }
 
@@ -189,8 +184,7 @@ namespace PsvDecryptCore.Services
                 output.SetLength(0);
                 var buffer = stream.ReadAll();
                 await output.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
-                await _loggingService.LogAsync(LogLevel.Information, $"Decrypted clip {Path.GetFileName(destFile)}.")
-                    .ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Information, $"Decrypted clip {Path.GetFileName(destFile)}.");
             }
         }
 
@@ -203,15 +197,13 @@ namespace PsvDecryptCore.Services
             string imageOutput = Path.Combine(courseOutput, "image.jpg");
             if (!File.Exists(imageSrc))
             {
-                await _loggingService.LogAsync(LogLevel.Warning, $"No course image found in {courseSource}, skipping.")
-                    .ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Warning, $"No course image found in {courseSource}, skipping.");
                 return;
             }
             if (!File.Exists(imageOutput))
             {
-                File.Copy(imageSrc, imageOutput);
-                await _loggingService.LogAsync(LogLevel.Debug, $"Copied course image to {imageOutput}.")
-                    .ConfigureAwait(false);
+                await Task.Run(() => File.Copy(imageSrc, imageOutput)).ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Debug, $"Copied course image to {imageOutput}.");
             }
         }
 
@@ -222,11 +214,11 @@ namespace PsvDecryptCore.Services
             if (!string.IsNullOrEmpty(serializedOutput))
             {
                 await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
-                await _loggingService.LogAsync(LogLevel.Debug,
-                    $"Finished writing course info for {courseInfo.Name}...").ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Debug,
+                    $"Finished writing course info for {courseInfo.Name}...");
                 return;
             }
-            await _loggingService.LogAsync(LogLevel.Warning, "Invalid course info, skipping...").ConfigureAwait(false);
+            _loggingService.Log(LogLevel.Warning, "Invalid course info, skipping...");
         }
 
         private async Task WriteModuleInfoAsync(Module moduleInfo, string moduleOutput)
@@ -236,11 +228,11 @@ namespace PsvDecryptCore.Services
             if (!string.IsNullOrEmpty(serializedOutput))
             {
                 await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
-                await _loggingService.LogAsync(LogLevel.Debug,
-                    $"Finished writing module info for {moduleInfo.Name}...").ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Debug,
+                    $"Finished writing module info for {moduleInfo.Name}...");
                 return;
             }
-            await _loggingService.LogAsync(LogLevel.Warning, "Invalid module info, skipping...").ConfigureAwait(false);
+            _loggingService.Log(LogLevel.Warning, "Invalid module info, skipping...");
         }
 
         private async Task WriteClipInfoAsync(IEnumerable<Clip> clipInfo, string clipOutput)
@@ -250,11 +242,11 @@ namespace PsvDecryptCore.Services
             if (!string.IsNullOrEmpty(serializedOutput))
             {
                 await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
-                await _loggingService.LogAsync(LogLevel.Debug,
-                    $"Finished writing clip info for {clipInfo.FirstOrDefault().Name}...").ConfigureAwait(false);
+                _loggingService.Log(LogLevel.Debug,
+                    $"Finished writing clip info for {clipInfo.FirstOrDefault().Name}...");
                 return;
             }
-            await _loggingService.LogAsync(LogLevel.Warning, "Invalid clip info, skipping...").ConfigureAwait(false);
+            _loggingService.Log(LogLevel.Warning, "Invalid clip info, skipping...");
         }
     }
 }

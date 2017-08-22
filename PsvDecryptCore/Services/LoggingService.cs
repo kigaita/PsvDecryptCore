@@ -17,16 +17,14 @@ namespace PsvDecryptCore.Services
             .AddFile($"log/{DateTime.Now:MM-dd-yy}.log")
             .CreateLogger("Main");
 
-        public Task LogAsync(LogLevel logLevel, string message)
+        public void Log(LogLevel logLevel, string message)
         {
             _logger.Log(logLevel, 0, message, null, (s, exception) => s.ToString());
-            return Task.CompletedTask;
         }
 
-        public Task LogExceptionAsync(LogLevel logLevel, Exception ex)
+        public void LogException(LogLevel logLevel, Exception ex)
         {
             _logger.Log(logLevel, 0, string.Empty, ex, (s, exception) => exception.ToString());
-            return Task.CompletedTask;
         }
     }
 }
