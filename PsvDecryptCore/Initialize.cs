@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using PsvDecryptCore.Common;
 using PsvDecryptCore.Models;
 using PsvDecryptCore.Services;
 
@@ -53,10 +54,10 @@ namespace PsvDecryptCore
                 .AddDbContext<PsvContext>()
                 .AddSingleton<LoggingService>()
                 .AddSingleton<DecryptionEngine>()
+                .AddSingleton<StringProcessor>()
                 .AddSingleton(fileInfo)
                 .AddLogging();
             var services = collection.BuildServiceProvider();
-            services.GetRequiredService<LoggingService>();
             return Task.FromResult<IServiceProvider>(services);
         }
     }

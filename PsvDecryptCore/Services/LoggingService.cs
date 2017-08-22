@@ -24,6 +24,7 @@ namespace PsvDecryptCore.Services
 
         public void LogException(LogLevel logLevel, Exception ex)
         {
+            if (ex == null) return;
             _logger.Log(logLevel, 0, string.Empty, ex, (s, exception) => exception.ToString());
         }
     }

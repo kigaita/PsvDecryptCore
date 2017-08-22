@@ -17,10 +17,11 @@ namespace PsvDecryptCore.Services
     {
         private readonly LoggingService _loggingService;
         private readonly PsvInformation _psvInformation;
+        private readonly StringProcessor _stringProcessor;
 
-        public DecryptionEngine(PsvInformation psvInformation,
-            LoggingService loggingService)
+        public DecryptionEngine(PsvInformation psvInformation, LoggingService loggingService, StringProcessor stringProcessor)
         {
+            _stringProcessor = stringProcessor;
             _psvInformation = psvInformation;
             _loggingService = loggingService;
         }
@@ -37,7 +38,7 @@ namespace PsvDecryptCore.Services
                     _loggingService.Log(LogLevel.Information, $"Processing course \"{course.Name}\"...");
                     // Checks
                     string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
-                    string courseOutput = Path.Combine(_psvInformation.Output, StringUtil.SanitizeTitle(course.Title));
+                    string courseOutput = Path.Combine(_psvInformation.Output, _stringProcessor.SanitizeTitle(course.Title));
                     if (!Directory.Exists(courseSource))
                     {
                         _loggingService.Log(LogLevel.Warning,
@@ -68,7 +69,7 @@ namespace PsvDecryptCore.Services
                         string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
                             .ConfigureAwait(false);
                         string moduleOutput = Path.Combine(courseOutput,
-                            $"{StringUtil.TitleToFileIndex(module.ModuleIndex)}. {StringUtil.TitleToFileName(module.Title)}");
+                            $"{_stringProcessor.TitleToFileIndex(module.ModuleIndex)}. {_stringProcessor.SanitizeTitle(module.Title)}");
                         string moduleSource = Path.Combine(courseSource, moduleHash);
                         if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
 
@@ -98,7 +99,7 @@ namespace PsvDecryptCore.Services
                         {
                             string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
                             string clipName =
-                                $"{StringUtil.TitleToFileIndex(clip.ClipIndex)}. {StringUtil.TitleToFileName(clip.Title)}";
+                                $"{_stringProcessor.TitleToFileIndex(clip.ClipIndex)}. {_stringProcessor.SanitizeTitle(clip.Title)}";
                             string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
 
                             // Decrypt individual clip
