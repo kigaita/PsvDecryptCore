@@ -9,11 +9,9 @@ namespace PsvDecryptCore.Common
 
         public PsStream(string filenamePath)
         {
-            _fileStream = File.Open(filenamePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            _fileStream = File.OpenRead(filenamePath);
             Length = new FileInfo(filenamePath).Length;
         }
-
-        public int BlockSize => 262144;
 
         public long Length { get; private set; }
 

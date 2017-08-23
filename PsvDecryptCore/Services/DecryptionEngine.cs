@@ -180,7 +180,7 @@ namespace PsvDecryptCore.Services
             }
 
             using (var input = new VirtualFileStream(srcFile))
-            using (var output = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None, 64000,
+            using (var output = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None, 128000,
                 FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
                 output.SetLength(0);
