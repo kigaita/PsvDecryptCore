@@ -179,12 +179,12 @@ namespace PsvDecryptCore.Services
                 return;
             }
 
-            using (var input = new VirtualFileStream(srcFile))
+            using (var input = new VirtualFileCache(srcFile))
             using (var output = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None, 128000,
                 FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
                 output.SetLength(0);
-                var buffer = input.ReadAll();
+                var buffer = await input.ReadAsync().ConfigureAwait(false);
                 await output.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                 _loggingService.Log(LogLevel.Information, $"Decrypted clip {Path.GetFileName(destFile)}.");
             }
