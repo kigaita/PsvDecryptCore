@@ -108,9 +108,11 @@ namespace PsvDecryptCore.Services
                             workerQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
 
                             // Create subtitles for each clip
+                            if (course.HasTranscript != true) return;
                             using (var psvContext = new PsvContext(_psvInformation))
                             {
                                 var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id);
+                                if (!transcripts.Any()) return;
                                 workerQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
                             }
                         });
@@ -135,10 +137,12 @@ namespace PsvDecryptCore.Services
         private async Task BuildSubtitlesAsync(IEnumerable<ClipTranscript> transcripts, string srtOutput,
             string srtName)
         {
+            var clipTranscripts = transcripts as IList<ClipTranscript> ?? transcripts.ToList();
+            if (!clipTranscripts.Any()) return;
             var transcriptBuilder = new StringBuilder();
             string transcriptFileOutput = Path.Combine(srtOutput, $"{srtName}.srt");
             int lineCount = 0;
-            foreach (var transcript in transcripts)
+            foreach (var transcript in clipTranscripts)
             {
                 lineCount++;
                 transcriptBuilder.AppendLine(lineCount.ToString());
