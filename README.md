@@ -18,9 +18,10 @@ This version is re-written from scratch with following improvements,
 
 | Courses | Total Size | Speed (Core) | Speed (Original) |
 |---------|------------|--------------|------------------|
-| 15 courses | 9.75 GB | 00:01:26.6418050 | 00:03:21.8365381 |
+| 9 courses | 4.43 GB | 00:00:18.9612940 | 00:01:25.0412004 |
 
-Last updated: 08/22/2017
+Last updated: 08/24/2017
+
 Tested with 4790K @ 4.7 GHz w/ source & output on same SSD
 
 # Usage
