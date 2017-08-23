@@ -3,7 +3,7 @@
 namespace PsvDecryptCore.Models
 {
     [Table("Clip")]
-    public class Clip
+    public class Clip : IPsvObject
     {
         public int ClipIndex { get; set; }
         public ulong DurationInMilliseconds { get; set; }

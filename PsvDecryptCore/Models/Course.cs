@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace PsvDecryptCore.Models
 {
     [Table("Course")]
-    public class Course
+    public class Course : IPsvObject
     {
         public string AuthorsFullnames { get; set; }
         public string DefaultImageUrl { get; set; }

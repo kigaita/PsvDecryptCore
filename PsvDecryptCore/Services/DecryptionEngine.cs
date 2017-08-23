@@ -19,7 +19,8 @@ namespace PsvDecryptCore.Services
         private readonly PsvInformation _psvInformation;
         private readonly StringProcessor _stringProcessor;
 
-        public DecryptionEngine(PsvInformation psvInformation, LoggingService loggingService, StringProcessor stringProcessor)
+        public DecryptionEngine(PsvInformation psvInformation, LoggingService loggingService,
+            StringProcessor stringProcessor)
         {
             _stringProcessor = stringProcessor;
             _psvInformation = psvInformation;
@@ -38,7 +39,8 @@ namespace PsvDecryptCore.Services
                     _loggingService.Log(LogLevel.Information, $"Processing course \"{course.Name}\"...");
                     // Checks
                     string courseSource = Path.Combine(_psvInformation.CoursesPath, course.Name);
-                    string courseOutput = Path.Combine(_psvInformation.Output, _stringProcessor.SanitizeTitle(course.Title));
+                    string courseOutput = Path.Combine(_psvInformation.Output,
+                        _stringProcessor.SanitizeTitle(course.Title));
                     if (!Directory.Exists(courseSource))
                     {
                         _loggingService.Log(LogLevel.Warning,
@@ -89,13 +91,13 @@ namespace PsvDecryptCore.Services
                         {
                             _loggingService.Log(LogLevel.Warning,
                                 $"No corresponding clips found for module {module.Name}, skipping...");
-                            return;
+                            continue;
                         }
 
                         // Write clip info
                         workerQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
 
-                        Parallel.ForEach(clips, options, async clip =>
+                        Parallel.ForEach(clips, options, clip =>
                         {
                             string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
                             string clipName =
@@ -108,8 +110,7 @@ namespace PsvDecryptCore.Services
                             // Create subtitles for each clip
                             using (var psvContext = new PsvContext(_psvInformation))
                             {
-                                var transcripts = await psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id)
-                                    .ToListAsync().ConfigureAwait(false);
+                                var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id);
                                 workerQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
                             }
                         });
@@ -131,10 +132,9 @@ namespace PsvDecryptCore.Services
         /// <summary>
         ///     Builds the <see cref="ClipTranscript" /> to SRT file.
         /// </summary>
-        private async Task BuildSubtitlesAsync(IList<ClipTranscript> transcripts, string srtOutput,
+        private async Task BuildSubtitlesAsync(IEnumerable<ClipTranscript> transcripts, string srtOutput,
             string srtName)
         {
-            if (!transcripts.Any()) return;
             var transcriptBuilder = new StringBuilder();
             string transcriptFileOutput = Path.Combine(srtOutput, $"{srtName}.srt");
             int lineCount = 0;
@@ -152,7 +152,7 @@ namespace PsvDecryptCore.Services
                 transcriptBuilder.AppendLine();
             }
             await File.WriteAllTextAsync(transcriptFileOutput, transcriptBuilder.ToString()).ConfigureAwait(false);
-            _loggingService.Log(LogLevel.Debug, $"Saved {srtName} subtitles...");
+            _loggingService.Log(LogLevel.Debug, $"Saved {srtName}...");
         }
 
         /// <summary>
@@ -180,7 +180,8 @@ namespace PsvDecryptCore.Services
             }
 
             using (var input = new VirtualFileStream(srcFile))
-            using (var output = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None, 64000, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            using (var output = new FileStream(destFile, FileMode.Create, FileAccess.Write, FileShare.None, 64000,
+                FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
                 output.SetLength(0);
                 var buffer = input.ReadAll();

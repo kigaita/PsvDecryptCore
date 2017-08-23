@@ -3,7 +3,7 @@
 namespace PsvDecryptCore.Models
 {
     [Table("ClipTranscript")]
-    public class ClipTranscript
+    public class ClipTranscript : IPsvObject
     {
         public int ClipId { get; set; }
         public ulong EndTime { get; set; }

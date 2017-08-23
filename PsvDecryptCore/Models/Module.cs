@@ -3,7 +3,7 @@
 namespace PsvDecryptCore.Models
 {
     [Table("Module")]
-    public class Module
+    public class Module :IPsvObject
     {
         public string AuthorHandle { get; set; }
         public string CourseName { get; set; }
