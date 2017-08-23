@@ -30,7 +30,7 @@ namespace PsvDecryptCore.Services
             var sb = new StringBuilder();
             foreach (char c in title)
                 sb.Append(_invalidChars.Contains(c) ? '.' : c);
-            return sb.ToString();
+            return sb.ToString().Trim();
         }
     }
 }

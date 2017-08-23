@@ -97,7 +97,7 @@ namespace PsvDecryptCore.Services
                         // Write clip info
                         workerQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
 
-                        Parallel.ForEach(clips, options, clip =>
+                        Parallel.ForEach(clips, options, async clip =>
                         {
                             string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
                             string clipName =
@@ -112,7 +112,7 @@ namespace PsvDecryptCore.Services
                             using (var psvContext = new PsvContext(_psvInformation))
                             {
                                 var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id);
-                                if (!transcripts.Any()) return;
+                                if (!await transcripts.AnyAsync().ConfigureAwait(false)) return;
                                 workerQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
                             }
                         });
