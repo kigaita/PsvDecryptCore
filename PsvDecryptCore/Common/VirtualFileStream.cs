@@ -4,11 +4,11 @@ using System.Threading.Tasks;
 
 namespace PsvDecryptCore.Common
 {
-    public class VirtualFileCache : IDisposable
+    public class VirtualFileStream : IDisposable
     {
         private readonly PsStream _encryptedVideoFile;
 
-        public VirtualFileCache(string encryptedVideoFilePath) => _encryptedVideoFile =
+        public VirtualFileStream(string encryptedVideoFilePath) => _encryptedVideoFile =
             new PsStream(encryptedVideoFilePath);
 
         public long Length => _encryptedVideoFile.Length;
