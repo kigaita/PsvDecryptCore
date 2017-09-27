@@ -21,8 +21,8 @@ namespace PsvDecryptCore.Common
             var pv = new byte[Length];
             _encryptedVideoFile.Seek(0, SeekOrigin.Begin);
             int length = await _encryptedVideoFile.ReadAsync(pv, 0, (int)Length).ConfigureAwait(false);
-            var result = await VideoEncryption.XorBufferAsync(pv, length, 0).ConfigureAwait(false);
-            return result;
+            VideoEncryption.XorBuffer(ref pv, length, 0);
+            return pv;
         }
     }
 }
