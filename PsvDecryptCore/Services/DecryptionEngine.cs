@@ -51,10 +51,10 @@ namespace PsvDecryptCore.Services
                     if (!Directory.Exists(courseOutput)) Directory.CreateDirectory(courseOutput);
 
                     // Course image copy
-                    workerQueue.Add(CopyCourseImageAsync(courseSource, courseOutput));
+                    await CopyCourseImageAsync(courseSource, courseOutput).ConfigureAwait(false);
 
                     // Write course info
-                    workerQueue.Add(WriteCourseInfoAsync(course, courseOutput));
+                    await WriteCourseInfoAsync(course, courseOutput).ConfigureAwait(false);
 
                     List<Module> modules;
                     using (var psvContext = new PsvContext(_psvInformation))
@@ -68,7 +68,7 @@ namespace PsvDecryptCore.Services
                     {
                         // Preps
                         _loggingService.Log(LogLevel.Information, $"Processing module: {module.Name}...");
-                        string moduleHash = await GetModuleHashAsync(module.Name, module.AuthorHandle)
+                        string moduleHash = await Task.Run(() => GetModuleHash(module.Name, module.AuthorHandle))
                             .ConfigureAwait(false);
                         string moduleOutput = Path.Combine(courseOutput,
                             $"{_stringProcessor.TitleToFileIndex(module.ModuleIndex)}. {_stringProcessor.SanitizeTitle(module.Title)}");
@@ -76,7 +76,7 @@ namespace PsvDecryptCore.Services
                         if (!Directory.Exists(moduleOutput)) Directory.CreateDirectory(moduleOutput);
 
                         // Write module info
-                        workerQueue.Add(WriteModuleInfoAsync(module, moduleOutput));
+                        await WriteModuleInfoAsync(module, moduleOutput).ConfigureAwait(false);
 
                         // Process each clip
                         List<Clip> clips;
@@ -95,7 +95,7 @@ namespace PsvDecryptCore.Services
                         }
 
                         // Write clip info
-                        workerQueue.Add(WriteClipInfoAsync(clips, moduleOutput));
+                        await WriteClipInfoAsync(clips, moduleOutput).ConfigureAwait(false);
 
                         Parallel.ForEach(clips, options, async clip =>
                         {
@@ -113,7 +113,7 @@ namespace PsvDecryptCore.Services
                             {
                                 var transcripts = psvContext.ClipTranscripts.Where(x => x.ClipId == clip.Id);
                                 if (!await transcripts.AnyAsync().ConfigureAwait(false)) return;
-                                workerQueue.Add(BuildSubtitlesAsync(transcripts, moduleOutput, clipName));
+                                await BuildSubtitlesAsync(transcripts, moduleOutput, clipName).ConfigureAwait(false);
                             }
                         });
                     }
@@ -162,13 +162,12 @@ namespace PsvDecryptCore.Services
         /// <summary>
         ///     Gets the required module hash for course directory name.
         /// </summary>
-        private static Task<string> GetModuleHashAsync(string name, string authorHandle)
+        private static string GetModuleHash(string name, string authorHandle)
         {
             using (var md5 = MD5.Create())
             {
-                return Task.FromResult(Convert
-                    .ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(name + "|" + authorHandle)))
-                    .Replace('/', '_'));
+                return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(name + "|" + authorHandle)))
+                    .Replace('/', '_');
             }
         }
 
@@ -255,7 +254,7 @@ namespace PsvDecryptCore.Services
             {
                 await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
                 _loggingService.Log(LogLevel.Debug,
-                    $"Finished writing clip info for {clipInfo.FirstOrDefault().Name}...");
+                    $"Finished writing clip info for {clipInfo?.FirstOrDefault()?.Name}...");
                 return;
             }
             _loggingService.Log(LogLevel.Warning, "Invalid clip info, skipping...");
