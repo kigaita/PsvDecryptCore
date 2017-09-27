@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Async;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -27,10 +28,9 @@ namespace PsvDecryptCore.Services
             _loggingService = loggingService;
         }
 
-        public async Task StartAsync(ParallelOptions options = null)
+        public async Task StartAsync(int? maxDegreeOfParallelism = null)
         {
-            options = options ?? new ParallelOptions {MaxDegreeOfParallelism = Environment.ProcessorCount};
-            var workerQueue = new List<Task>();
+            int threads = maxDegreeOfParallelism ?? Environment.ProcessorCount;
             using (var db = new PsvContext(_psvInformation))
             {
                 IEnumerable<Course> courses = db.Courses;
@@ -56,14 +56,11 @@ namespace PsvDecryptCore.Services
                     // Write course info
                     await WriteCourseInfoAsync(course, courseOutput).ConfigureAwait(false);
 
-                    List<Module> modules;
-                    using (var psvContext = new PsvContext(_psvInformation))
-                    {
-                        modules = await psvContext.Modules.Where(x => x.CourseName == course.Name).ToListAsync()
-                            .ConfigureAwait(false);
-                    }
+                    var modules = await db.Modules.Where(x => x.CourseName == course.Name).ToListAsync()
+                        .ConfigureAwait(false);
                     _loggingService.Log(LogLevel.Information,
                         $"Found {modules.Count} modules under course \"{course.Name}\"...");
+
                     foreach (var module in modules)
                     {
                         // Preps
@@ -79,13 +76,8 @@ namespace PsvDecryptCore.Services
                         await WriteModuleInfoAsync(module, moduleOutput).ConfigureAwait(false);
 
                         // Process each clip
-                        List<Clip> clips;
-                        using (var psvContext = new PsvContext(_psvInformation))
-                        {
-                            clips = await psvContext.Clips.Where(x => x.ModuleId == module.Id).ToListAsync()
-                                .ConfigureAwait(false);
-                        }
-
+                        var clips = await db.Clips.Where(x => x.ModuleId == module.Id).ToListAsync().ConfigureAwait(false);
+                        
                         // Bail if no courses are found in database
                         if (clips.Count == 0)
                         {
@@ -97,7 +89,7 @@ namespace PsvDecryptCore.Services
                         // Write clip info
                         await WriteClipInfoAsync(clips, moduleOutput).ConfigureAwait(false);
 
-                        Parallel.ForEach(clips, options, async clip =>
+                        await clips.ParallelForEachAsync(async clip =>
                         {
                             string clipSource = Path.Combine(moduleSource, $"{clip.Name}.psv");
                             string clipName =
@@ -105,7 +97,7 @@ namespace PsvDecryptCore.Services
                             string clipFilePath = Path.Combine(moduleOutput, $"{clipName}.mp4");
 
                             // Decrypt individual clip
-                            workerQueue.Add(DecryptFileAsync(clipSource, clipFilePath));
+                            await DecryptFileAsync(clipSource, clipFilePath).ConfigureAwait(false);
 
                             // Create subtitles for each clip
                             if (course.HasTranscript != true) return;
@@ -115,30 +107,20 @@ namespace PsvDecryptCore.Services
                                 if (!await transcripts.AnyAsync().ConfigureAwait(false)) return;
                                 await BuildSubtitlesAsync(transcripts, moduleOutput, clipName).ConfigureAwait(false);
                             }
-                        });
+                        }, threads).ConfigureAwait(false);
                     }
                 }
-            }
-            try
-            {
-                await Task.WhenAll(workerQueue).ConfigureAwait(false);
-            }
-            catch (AggregateException exs)
-            {
-                _loggingService.Log(LogLevel.Warning, $"Decryption ended with {exs.InnerExceptions.Count} errors.");
-                foreach (var exsInnerException in exs.InnerExceptions)
-                    _loggingService.LogException(LogLevel.Warning, exsInnerException);
             }
         }
 
         /// <summary>
         ///     Builds the <see cref="ClipTranscript" /> to SRT file.
         /// </summary>
-        private async Task BuildSubtitlesAsync(IEnumerable<ClipTranscript> transcripts, string srtOutput,
+        private Task BuildSubtitlesAsync(IEnumerable<ClipTranscript> transcripts, string srtOutput,
             string srtName)
         {
             var clipTranscripts = transcripts as IList<ClipTranscript> ?? transcripts.ToList();
-            if (!clipTranscripts.Any()) return;
+            if (!clipTranscripts.Any()) return Task.CompletedTask;
             var transcriptBuilder = new StringBuilder();
             string transcriptFileOutput = Path.Combine(srtOutput, $"{srtName}.srt");
             int lineCount = 0;
@@ -155,8 +137,8 @@ namespace PsvDecryptCore.Services
                     transcript.Text.Replace("\r", "").Split('\n').Select(x => "- " + x)));
                 transcriptBuilder.AppendLine();
             }
-            await File.WriteAllTextAsync(transcriptFileOutput, transcriptBuilder.ToString()).ConfigureAwait(false);
-            _loggingService.Log(LogLevel.Debug, $"Saved {srtName}...");
+            _loggingService.Log(LogLevel.Debug, $"Saving {srtName}...");
+            return File.WriteAllTextAsync(transcriptFileOutput, transcriptBuilder.ToString());
         }
 
         /// <summary>
@@ -213,51 +195,53 @@ namespace PsvDecryptCore.Services
                     FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
                 {
                     await sourceStream.CopyToAsync(destinationStream).ConfigureAwait(false);
+                    _loggingService.Log(LogLevel.Debug, $"Copied course image to {imageOutput}...");
+                    return;
                 }
-                _loggingService.Log(LogLevel.Debug, $"Copied course image to {imageOutput}.");
             }
+            _loggingService.Log(LogLevel.Debug, $"Course image already exists at {imageOutput}, skipping...");
         }
 
-        private async Task WriteCourseInfoAsync(Course courseInfo, string courseOutput)
+        private Task WriteCourseInfoAsync(Course courseInfo, string courseOutput)
         {
             string serializedOutput = JsonConvert.SerializeObject(courseInfo, Formatting.Indented);
             string output = Path.Combine(courseOutput, "course-info.json");
             if (!string.IsNullOrEmpty(serializedOutput))
             {
-                await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
                 _loggingService.Log(LogLevel.Debug,
                     $"Finished writing course info for {courseInfo.Name}...");
-                return;
+                return File.WriteAllTextAsync(output, serializedOutput);
             }
             _loggingService.Log(LogLevel.Warning, "Invalid course info, skipping...");
+            return Task.CompletedTask;
         }
 
-        private async Task WriteModuleInfoAsync(Module moduleInfo, string moduleOutput)
+        private Task WriteModuleInfoAsync(Module moduleInfo, string moduleOutput)
         {
             string serializedOutput = JsonConvert.SerializeObject(moduleInfo, Formatting.Indented);
             string output = Path.Combine(moduleOutput, "module-info.json");
             if (!string.IsNullOrEmpty(serializedOutput))
             {
-                await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
                 _loggingService.Log(LogLevel.Debug,
-                    $"Finished writing module info for {moduleInfo.Name}...");
-                return;
+                    $"Writing module info for {moduleInfo.Name}...");
+                return File.WriteAllTextAsync(output, serializedOutput);
             }
             _loggingService.Log(LogLevel.Warning, "Invalid module info, skipping...");
+            return Task.CompletedTask;
         }
 
-        private async Task WriteClipInfoAsync(IEnumerable<Clip> clipInfo, string clipOutput)
+        private Task WriteClipInfoAsync(IEnumerable<Clip> clipInfo, string clipOutput)
         {
             string serializedOutput = JsonConvert.SerializeObject(clipInfo, Formatting.Indented);
             string output = Path.Combine(clipOutput, "clip-info.json");
             if (!string.IsNullOrEmpty(serializedOutput))
             {
-                await File.WriteAllTextAsync(output, serializedOutput).ConfigureAwait(false);
                 _loggingService.Log(LogLevel.Debug,
-                    $"Finished writing clip info for {clipInfo?.FirstOrDefault()?.Name}...");
-                return;
+                    $"Writing clip info for {clipInfo?.FirstOrDefault()?.Name}...");
+                return File.WriteAllTextAsync(output, serializedOutput);
             }
             _loggingService.Log(LogLevel.Warning, "Invalid clip info, skipping...");
+            return Task.CompletedTask;
         }
     }
 }
